@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Final3</string>
+    <string name="txt_on">On</string>
+    <string name="txt_off">Off</string>
+</resources>
