@@ -2,6 +2,7 @@ package com.ldnhat.final3
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -9,6 +10,7 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -20,16 +22,21 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_home.*
+import java.text.SimpleDateFormat
 import java.util.*
 
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var speechRecognizer:SpeechRecognizer
-    val RecordAudioRequestCode = 1
-    var ref: DatabaseReference? = null
-    var fan:DatabaseReference? = null
-    var lightData:String? = null
-    var fanData:String? = null
+    private val RecordAudioRequestCode = 1
+    private var light: DatabaseReference? = null
+    private var fan:DatabaseReference? = null
+    private var lightTime:DatabaseReference? = null
+    private var fanTime:DatabaseReference? = null
+    private var lightData:String? = null
+    private var fanData:String? = null
+    private var lastSelectedHour = -1
+    private var lastSelectedMinute = -1
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,23 +52,26 @@ class HomeActivity : AppCompatActivity() {
         }
 
         val database = Firebase.database
-        ref = database.getReference("light_state")
+        light = database.getReference("light_state")
         fan = database.getReference("fan_state")
+        lightTime = database.getReference("light_time")
+        fanTime = database.getReference("fan_time")
 
-        ref!!.addValueEventListener(object : ValueEventListener{
+
+        light!!.addValueEventListener(object : ValueEventListener {
             override fun onCancelled(error: DatabaseError) {
                 error.details
             }
 
             override fun onDataChange(snapshot: DataSnapshot) {
-               lightData = snapshot.value as String
+                lightData = snapshot.value as String
                 handleStateOfLight(lightData!!)
 
             }
 
         })
 
-        fan!!.addValueEventListener(object : ValueEventListener{
+        fan!!.addValueEventListener(object : ValueEventListener {
             override fun onCancelled(error: DatabaseError) {
                 error.details
             }
@@ -76,15 +86,57 @@ class HomeActivity : AppCompatActivity() {
         speechRecognizer =  SpeechRecognizer.createSpeechRecognizer(this)
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        intent.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        )
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
 
         btn_open_voice.setOnClickListener {
             startActivityForResult(intent, 20)
         }
 
+        //handle time light
+        handleTimeLight()
+
+        //handle time fan
+        handleTimeFan()
     }
 
+    @SuppressLint("SetTextI18n")
+    private fun handleTimeLight(){
+
+        btn_time_light.setOnClickListener {
+            buttonSelectTime("LIGHT")
+            btn_destroy_time_light.visibility = View.VISIBLE
+        }
+
+        btn_destroy_time_light.setOnClickListener {
+            btn_destroy_time_light.visibility = View.GONE
+            lightTime?.setValue(-1)
+            btn_time_light.text = "Đặt Giờ"
+            sw_turn_light.isChecked = false
+            light?.setValue("turn_off_light")
+
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun handleTimeFan(){
+
+        btn_time_fan.setOnClickListener {
+            buttonSelectTime("FAN")
+            btn_destroy_time_fan.visibility = View.VISIBLE
+        }
+
+        btn_destroy_time_fan.setOnClickListener {
+            btn_destroy_time_fan.visibility = View.GONE
+            fanTime?.setValue(-1)
+            btn_time_fan.text = "Đặt Giờ"
+            sw_turn_fan.isChecked = false
+            fan?.setValue("turn_off_fan")
+        }
+    }
 
     private fun handleStateOfFan(data: String){
         sw_turn_fan.isChecked = data == "turn_on_fan"
@@ -100,62 +152,17 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleStateOfLight(data : String){
+    private fun handleStateOfLight(data: String){
         sw_turn_light.isChecked = data == "turn_on_light"
         sw_turn_light.setOnCheckedChangeListener { buttonView, isChecked ->
             if(isChecked){
-                ref!!.setValue("turn_on_light")
+                light!!.setValue("turn_on_light")
                 Toast.makeText(this, "đã bật đèn", Toast.LENGTH_SHORT).show()
             }else if(!isChecked){
-                ref!!.setValue("turn_off_light")
+                light!!.setValue("turn_off_light")
                 Toast.makeText(this, "đã tắt đèn", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun handleSpeechRecognizer(speechRecognizer: SpeechRecognizer){
-        speechRecognizer.setRecognitionListener(object : RecognitionListener{
-            override fun onReadyForSpeech(params: Bundle?) {
-
-            }
-
-            override fun onRmsChanged(rmsdB: Float) {
-
-            }
-
-            override fun onBufferReceived(buffer: ByteArray?) {
-
-            }
-
-            override fun onPartialResults(partialResults: Bundle?) {
-
-            }
-
-            override fun onEvent(eventType: Int, params: Bundle?) {
-
-            }
-
-            override fun onBeginningOfSpeech() {
-                //txt_result.hint = "hello"
-            }
-
-            override fun onEndOfSpeech() {
-
-            }
-
-            override fun onError(error: Int) {
-
-            }
-
-            override fun onResults(results: Bundle?) {
-                if (results != null) {
-                    val bundle: ArrayList<String>? =  results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val data = bundle?.get(0)
-                    //txt_result.text = data.toString()
-                }
-            }
-
-        })
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -166,9 +173,9 @@ class HomeActivity : AppCompatActivity() {
 
             if(voice.equals("turn on light") || voice.equals("Turn on Light") || voice.equals("Bật Đèn")
                 || voice.equals("bật đèn")){
-                ref?.setValue("turn_on_light")
+                light?.setValue("turn_on_light")
             }else if(voice.equals("Tắt Đèn") || voice.equals("Turn off Light")) {
-                ref?.setValue("turn_off_light")
+                light?.setValue("turn_off_light")
             }else if(voice.equals("Turn on Fan") || voice.equals("Bật Quạt") || voice.equals("bật quạt")){
                 fan?.setValue("turn_on_fan")
             }else if(voice.equals("Turn off Fan") || voice.equals("Tắt Quạt") || voice.equals("tắt quạt")){
@@ -205,6 +212,52 @@ class HomeActivity : AppCompatActivity() {
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    @SuppressLint("SetTextI18n", "SimpleDateFormat")
+    private fun buttonSelectTime(device : String){
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
+        val calendar:Calendar = Calendar.getInstance()
+        if (this.lastSelectedHour == -1){
+
+            this.lastSelectedHour = calendar.get(Calendar.HOUR_OF_DAY)
+            this.lastSelectedMinute = calendar.get(Calendar.MINUTE)
+        }
+
+        val timeSetListener:TimePickerDialog.OnTimeSetListener = TimePickerDialog.OnTimeSetListener { view, hourOfDay, minute ->
+            lastSelectedHour = hourOfDay
+            lastSelectedMinute = minute
+
+            val simpleDateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+            val year: String = calendar[Calendar.YEAR].toString()
+            val month = (calendar[Calendar.MONTH] + 1).toString()
+            val day = calendar[Calendar.DAY_OF_MONTH].toString()
+            val seconds = calendar[Calendar.SECOND].toString()
+
+            val date:Date? = simpleDateFormatter.parse(year+"-"+month+"-"+day+" "+hourOfDay+":"+minute+":"+seconds)
+            val millionSeconds: Long = date!!.time
+            if (device.equals("LIGHT")){
+                btn_time_light.text = hourOfDay.toString() +" : "+minute
+                lightTime?.setValue(millionSeconds)
+                light?.setValue("turn_on_light")
+                sw_turn_light.isChecked = true
+            }else if (device.equals("FAN")){
+                btn_time_fan.text = hourOfDay.toString() +" : "+minute
+                fanTime?.setValue(millionSeconds)
+                fan?.setValue("turn_on_fan")
+                sw_turn_fan.isChecked = true
+            }
+        }
+
+        val timePickerDialog = TimePickerDialog(
+            this,
+            timeSetListener,
+            lastSelectedHour,
+            lastSelectedMinute,
+            true
+        )
+
+        timePickerDialog.show()
     }
 
 }
