@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.icu.util.TimeUnit
 import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
@@ -22,6 +23,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.synthetic.main.activity_home.*
+import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -71,6 +73,29 @@ class HomeActivity : AppCompatActivity() {
 
         })
 
+        lightTime!!.addValueEventListener(object : ValueEventListener{
+            @SuppressLint("SimpleDateFormat")
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var lightTimeData:Long = snapshot.value as Long
+
+                if (lightTimeData < 0){
+                    btn_time_light.text = "Đặt Giờ"
+                    btn_destroy_time_light.visibility = View.GONE
+                }else{
+                    val simpleDateFormat:DateFormat = SimpleDateFormat("HH:mm")
+                    var date:Date = Date(lightTimeData)
+                    btn_time_light.text = simpleDateFormat.format(date).toString()
+                    btn_destroy_time_light.visibility = View.VISIBLE
+
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+
+            }
+
+        })
+
         fan!!.addValueEventListener(object : ValueEventListener {
             override fun onCancelled(error: DatabaseError) {
                 error.details
@@ -81,6 +106,27 @@ class HomeActivity : AppCompatActivity() {
                 handleStateOfFan(fanData!!)
             }
 
+        })
+
+        fanTime!!.addValueEventListener(object : ValueEventListener{
+            @SuppressLint("SimpleDateFormat")
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var timeFanData:Long = snapshot.value as Long
+
+                if (timeFanData < 0){
+                    btn_time_fan.text = "Đặt Giờ"
+                    btn_destroy_time_fan.visibility = View.GONE
+                }else{
+                    val simpleDateFormat:DateFormat = SimpleDateFormat("HH:mm")
+                    var date:Date = Date(timeFanData)
+                    btn_time_fan.text = simpleDateFormat.format(date).toString()
+                    btn_destroy_time_fan.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+
+            }
         })
 
         speechRecognizer =  SpeechRecognizer.createSpeechRecognizer(this)
