@@ -5,10 +5,8 @@ import android.annotation.SuppressLint
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.icu.util.TimeUnit
 import android.os.Build
 import android.os.Bundle
-import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
